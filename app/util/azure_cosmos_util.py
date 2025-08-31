@@ -3,7 +3,6 @@ from azure.keyvault.secrets import SecretClient
 import azure.cosmos.cosmos_client as cosmos_client
 import azure.cosmos.exceptions as exceptions
 
-
 class AzureCosmosUtil:
     def __init__(self):
         self.key_vault_name = "storage-account-01"
@@ -19,18 +18,20 @@ class AzureCosmosUtil:
         secret_client = SecretClient(vault_url=self.KVUri, credential=self.credential)
         master_key = secret_client.get_secret(self.secret_name).value
 
-        client = cosmos_client.CosmosClient(self.host, {'masterKey': master_key}, user_agent="yuonghub_cosmos",
-                                            user_agent_overwrite=True)
+        client = cosmos_client.CosmosClient(
+            self.host,
+            {'masterKey': master_key},
+            user_agent="younghub_cosmos",
+            user_agent_overwrite=True
+        )
 
         try:
-            # Access the existing database
             db = client.get_database_client(self.db_name)
         except exceptions.CosmosHttpResponseError as e:
             print(f'Error accessing database: {e}')
             return None
 
         try:
-            # Access the existing container
             container = db.get_container_client(self.container_id)
             print(f"Container '{self.container_id}' accessed successfully.")
             return container
@@ -38,32 +39,67 @@ class AzureCosmosUtil:
             print(f'Error accessing container: {e}')
             return None
 
-    def read_article_list(self):
-        """
-        Reads all items from the container and returns them as a list of dictionaries.
-        """
+    # === 公共入口：可选按频道过滤 / Optional channel filter ===
+    def read_article_list(self, channel_id: str | None = None, top: int | None = None):
         container = self.get_container()
-        if container:
-            return self.read_items(container)
+        if not container:
+            return []
 
-    def read_items(self, container):
+        return self._read_items(container, channel_id=channel_id, top=top)
+
+    # === 读取并显式投影全部需要的字段 / Read + explicit projection ===
+    def _read_items(self, container, channel_id: str | None = None, top: int | None = None):
         try:
-            # Query all items in the container
-            items = container.query_items(
-                query="SELECT * FROM c",
-                enable_cross_partition_query=True
+            if channel_id:
+                # 精确频道过滤（字符串比较）；若你的 ID 在库里是数字，可在这里加 CAST
+                query = """
+                    SELECT
+                        c.id, c.ID, c.OrderID, c.Title, c.Subtitle,
+                        c.Description, c.DescriptionText, c.ContentURL,
+                        c.RegistrationURL, c.Author, c.PictureURL, c.Location,
+                        c.StartDate, c.EndDate
+                    FROM c
+                    WHERE c.ID = @id
+                """
+                params = [{"name": "@id", "value": channel_id}]
+            else:
+                # 返回全部（文章 + 活动），显式投影包含 ID 等字段
+                query = """
+                    SELECT
+                        c.id, c.ID, c.OrderID, c.Title, c.Subtitle,
+                        c.Description, c.DescriptionText, c.ContentURL,
+                        c.RegistrationURL, c.Author, c.PictureURL, c.Location,
+                        c.StartDate, c.EndDate
+                    FROM c
+                """
+                params = []
+
+            items_iter = container.query_items(
+                query=query,
+                parameters=params,
+                enable_cross_partition_query=True  # ✅ 必须：跨分区查询
             )
 
             result_list = []
-            for item in items:
+            for item in items_iter:
+                # 直接把需要的字段返回给前端（缺失的字段给空字符串 / None）
                 result_list.append({
+                    "id": item.get("id", ""),
+                    "ID": item.get("ID", ""),
                     "OrderID": item.get("OrderID"),
-                    "Title": item.get("Title"),
-                    "Description": item.get("Description"),
-                    "ContentURL": item.get("ContentURL"),
-                    "Author": item.get("Author"),
-                    "PictureURL": item.get("PictureURL")
+                    "Title": item.get("Title", ""),
+                    "Subtitle": item.get("Subtitle", ""),
+                    "Description": item.get("Description", ""),
+                    "ContentURL": item.get("ContentURL", ""),
+                    "Author": item.get("Author", ""),
+                    "PictureURL": item.get("PictureURL", ""),
+                    "Location": item.get("Location", ""),
+                    "StartDate": item.get("StartDate", ""),
+                    "EndDate": item.get("EndDate", "")
                 })
+
+            if top is not None and top > 0:
+                result_list = result_list[:top]
 
             return result_list
 
