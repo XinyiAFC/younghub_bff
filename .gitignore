@@ -21,3 +21,9 @@ myenv/   # Your custom virtual environment
 # IDE settings (optional, for PyCharm or VSCode users)
 .idea/
 .vscode/
+
+# Local migration and macOS metadata
+.younghub-migration/
+.venv/
+.DS_Store
+._*

@@ -57,7 +57,9 @@ class AzureCosmosUtil:
                         c.id, c.ID, c.OrderID, c.Title, c.Subtitle,
                         c.Description, c.DescriptionText, c.ContentURL,
                         c.RegistrationURL, c.Author, c.PictureURL, c.Location,
-                        c.StartDate, c.EndDate
+                        c.StartDate, c.EndDate, c.ContentHTML, c.PublishedAt,
+                        c.UpdatedAt, c.SourceURL, c.SourcePostID, c.ContentStatus,
+                        c.ContentType, c.FeaturedImageBlobURL, c.SyncVersion
                     FROM c
                     WHERE c.ID = @id
                 """
@@ -69,7 +71,9 @@ class AzureCosmosUtil:
                         c.id, c.ID, c.OrderID, c.Title, c.Subtitle,
                         c.Description, c.DescriptionText, c.ContentURL,
                         c.RegistrationURL, c.Author, c.PictureURL, c.Location,
-                        c.StartDate, c.EndDate
+                        c.StartDate, c.EndDate, c.ContentHTML, c.PublishedAt,
+                        c.UpdatedAt, c.SourceURL, c.SourcePostID, c.ContentStatus,
+                        c.ContentType, c.FeaturedImageBlobURL, c.SyncVersion
                     FROM c
                 """
                 params = []
@@ -95,7 +99,16 @@ class AzureCosmosUtil:
                     "PictureURL": item.get("PictureURL", ""),
                     "Location": item.get("Location", ""),
                     "StartDate": item.get("StartDate", ""),
-                    "EndDate": item.get("EndDate", "")
+                    "EndDate": item.get("EndDate", ""),
+                    "ContentHTML": item.get("ContentHTML"),
+                    "PublishedAt": item.get("PublishedAt"),
+                    "UpdatedAt": item.get("UpdatedAt"),
+                    "SourceURL": item.get("SourceURL"),
+                    "SourcePostID": item.get("SourcePostID"),
+                    "ContentStatus": item.get("ContentStatus"),
+                    "ContentType": item.get("ContentType"),
+                    "FeaturedImageBlobURL": item.get("FeaturedImageBlobURL"),
+                    "SyncVersion": item.get("SyncVersion")
                 })
 
             if top is not None and top > 0:
